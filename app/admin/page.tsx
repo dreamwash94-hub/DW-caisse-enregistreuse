@@ -1,0 +1,212 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { Vente } from '@/types'
+import { fmt, CENTRES } from '@/lib/data'
+import AppShell from '@/components/AppShell'
+
+const ADMIN_CODE = '9999'
+const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫']
+
+const todayStr = () => {
+  const d = new Date()
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
+
+export default function AdminPage() {
+  const [unlocked, setUnlocked] = useState(false)
+  const [pin, setPin] = useState('')
+  const [shake, setShake] = useState(false)
+  const [ventes, setVentes] = useState<Vente[]>([])
+  const [filterCentre, setFilterCentre] = useState('Tous')
+  const [filterPeriod, setFilterPeriod] = useState<'today'|'week'|'month'>('today')
+
+  useEffect(() => {
+    if (!unlocked) return
+    const q = query(collection(db, 'ventes'), orderBy('timestamp', 'desc'))
+    const unsub = onSnapshot(q, snap => {
+      setVentes(snap.docs.map(d => ({ ...d.data() as Vente, id: d.id })))
+    })
+    return unsub
+  }, [unlocked])
+
+  const handleKey = (k: string) => {
+    if (k === '⌫') { setPin(p => p.slice(0,-1)); return }
+    if (pin.length >= 4) return
+    const next = pin + k
+    setPin(next)
+    if (next.length === 4) {
+      if (next === ADMIN_CODE) {
+        setUnlocked(true)
+      } else {
+        setShake(true)
+        setTimeout(() => { setShake(false); setPin('') }, 400)
+      }
+    }
+  }
+
+  const filterVente = (v: Vente) => {
+    const d = new Date(v.dateISO)
+    const now = new Date()
+    const periodOk = filterPeriod === 'today'
+      ? v.date === todayStr()
+      : filterPeriod === 'week'
+        ? d >= new Date(now.getTime() - 7*86400000)
+        : d >= new Date(now.getTime() - 30*86400000)
+    const centreOk = filterCentre === 'Tous' || v.centre === filterCentre
+    return periodOk && centreOk
+  }
+
+  const visible = ventes.filter(filterVente)
+  const totalCA = visible.reduce((s, v) => s + v.totalTTC, 0)
+  const byCenter = CENTRES.map(c => ({
+    centre: c,
+    ventes: visible.filter(v => v.centre === c),
+    ca: visible.filter(v => v.centre === c).reduce((s,v) => s + v.totalTTC, 0),
+  })).filter(x => x.ventes.length > 0)
+
+  if (!unlocked) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center h-full py-8">
+          <p className="text-white/70 text-sm font-semibold mb-6">Code administrateur</p>
+          <div className={`glass rounded-2xl p-6 w-full max-w-xs ${shake ? 'animate-shake' : ''}`}>
+            <div className="flex justify-center gap-4 mb-6">
+              {[0,1,2,3].map(i => (
+                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
+                  i < pin.length ? 'bg-white border-white' : 'border-white/40'
+                }`} />
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {KEYS.map((k, i) => {
+                if (!k) return <div key={i} />
+                return (
+                  <button key={i} onClick={() => handleKey(k)}
+                    className={`py-4 rounded-xl text-xl font-bold transition-all active:scale-95 ${
+                      k === '⌫' ? 'text-white/60' : 'text-white hover:bg-white/20'
+                    }`}
+                    style={{ background: k === '⌫' ? 'transparent' : 'rgba(255,255,255,0.1)' }}>
+                    {k}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell>
+      <div className="flex flex-col h-full p-4 overflow-y-auto" style={{ height: 'calc(100vh - 100px)' }}>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 mb-4 flex-shrink-0">
+          {(['today','week','month'] as const).map(p => (
+            <button key={p} onClick={() => setFilterPeriod(p)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                filterPeriod === p ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+              }`}>
+              {p === 'today' ? "Aujourd'hui" : p === 'week' ? '7 jours' : '30 jours'}
+            </button>
+          ))}
+          <select value={filterCentre} onChange={e => setFilterCentre(e.target.value)}
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white/20 text-white border border-white/20 outline-none">
+            <option value="Tous">Tous les centres</option>
+            {CENTRES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        {/* Stats cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 flex-shrink-0">
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">CA Total</p>
+            <p className="text-dw-pale font-black text-2xl">{fmt(totalCA)}</p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Ventes</p>
+            <p className="text-white font-black text-2xl">{visible.length}</p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Panier moyen</p>
+            <p className="text-white font-black text-2xl">
+              {visible.length > 0 ? fmt(totalCA / visible.length) : '—'}
+            </p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Espèces</p>
+            <p className="text-white font-black text-xl">
+              {fmt(visible.filter(v=>v.paiement==='especes').reduce((s,v)=>s+v.totalTTC,0))}
+            </p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Carte</p>
+            <p className="text-white font-black text-xl">
+              {fmt(visible.filter(v=>v.paiement==='carte').reduce((s,v)=>s+v.totalTTC,0))}
+            </p>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">TVA collectée</p>
+            <p className="text-white font-black text-xl">
+              {fmt(visible.reduce((s,v)=>s+v.tva,0))}
+            </p>
+          </div>
+        </div>
+
+        {/* By center */}
+        {byCenter.length > 0 && (
+          <div className="mb-4 flex-shrink-0">
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Par centre</p>
+            <div className="space-y-2">
+              {byCenter.sort((a,b) => b.ca - a.ca).map(({ centre, ventes: cv, ca }) => (
+                <div key={centre} className="glass rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white text-sm">{centre}</p>
+                    <p className="text-white/50 text-xs">{cv.length} vente(s)</p>
+                  </div>
+                  <p className="text-dw-pale font-black text-lg">{fmt(ca)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent sales */}
+        <div>
+          <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Dernières ventes</p>
+          {visible.length === 0 ? (
+            <div className="text-center text-white/30 py-8">Aucune vente pour cette période</div>
+          ) : (
+            <div className="space-y-2">
+              {visible.slice(0, 50).map((v, i) => (
+                <div key={v.id ?? i} className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-bold text-white text-sm">{v.tech.nom}</p>
+                      <span className="text-white/40 text-xs">·</span>
+                      <p className="text-white/60 text-xs">{v.centre}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        v.paiement === 'carte' ? 'bg-blue-500/30 text-blue-200' : 'bg-dw-blue/30 text-dw-blue'
+                      }`}>
+                        {v.paiement === 'carte' ? '💳' : '💵'}
+                      </span>
+                    </div>
+                    <p className="text-white/40 text-xs truncate">{v.items.map(it=>it.nom).join(', ')}</p>
+                    {v.client && <p className="text-white/40 text-xs">👤 {v.client.nom}</p>}
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-dw-pale font-black">{fmt(v.totalTTC)}</p>
+                    <p className="text-white/40 text-xs">{v.date}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </AppShell>
+  )
+}
