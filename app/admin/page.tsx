@@ -4,8 +4,8 @@ import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Vente } from '@/types'
 import { fmt, CENTRES } from '@/lib/data'
-import AppShell from '@/components/AppShell'
 import { useRouter } from 'next/navigation'
+import DreamwashLogo from '@/components/DreamwashLogo'
 
 const ADMIN_CODE = '9999'
 const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫']
@@ -88,6 +88,9 @@ export default function AdminPage() {
           className="absolute top-4 left-4 text-white/50 hover:text-white text-sm transition-all">
           ← Retour
         </button>
+        <div className="mb-6">
+          <DreamwashLogo size="sm" />
+        </div>
         <p className="text-white/70 text-sm font-semibold mb-6">Mode administrateur</p>
         <div className={`glass rounded-2xl p-6 w-full max-w-xs ${shake ? 'animate-shake' : ''}`}>
           <div className="flex justify-center gap-4 mb-6">
@@ -117,11 +120,23 @@ export default function AdminPage() {
   }
 
   return (
-    <AppShell>
-      <div className="flex flex-col h-full p-4 overflow-y-auto" style={{ height: 'calc(100vh - 100px)' }}>
+    <div className="min-h-screen flex flex-col">
+      {/* Header standalone */}
+      <header className="glass flex items-center justify-between px-4 py-3 flex-shrink-0 safe-top">
+        <div className="flex items-center gap-3">
+          <DreamwashLogo size="sm" />
+          <span className="text-white/60 text-xs font-semibold">Admin</span>
+        </div>
+        <button onClick={() => router.replace('/')}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white/80 hover:bg-white/20 transition-all border border-white/20">
+          ← Retour
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
 
         {/* Tablet config */}
-        <div className="glass rounded-2xl p-4 mb-4 flex-shrink-0">
+        <div className="glass rounded-2xl p-4">
           <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
             ⚙️ Configuration de cette tablette
           </p>
@@ -146,7 +161,7 @@ export default function AdminPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-4 flex-shrink-0">
+        <div className="flex flex-wrap gap-2 flex-shrink-0">
           {(['today','week','month'] as const).map(p => (
             <button key={p} onClick={() => setFilterPeriod(p)}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
@@ -163,7 +178,7 @@ export default function AdminPage() {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 flex-shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="glass rounded-xl p-4">
             <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">CA Total</p>
             <p className="text-dw-pale font-black text-2xl">{fmt(totalCA)}</p>
@@ -200,7 +215,7 @@ export default function AdminPage() {
 
         {/* By center */}
         {byCenter.length > 0 && (
-          <div className="mb-4 flex-shrink-0">
+          <div>
             <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Par centre</p>
             <div className="space-y-2">
               {byCenter.sort((a,b) => b.ca - a.ca).map(({ centre, ventes: cv, ca }) => (
@@ -222,7 +237,7 @@ export default function AdminPage() {
           {visible.length === 0 ? (
             <div className="text-center text-white/30 py-8">Aucune vente pour cette période</div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 pb-8">
               {visible.slice(0, 50).map((v, i) => (
                 <div key={v.id ?? i} className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -249,6 +264,6 @@ export default function AdminPage() {
           )}
         </div>
       </div>
-    </AppShell>
+    </div>
   )
 }
