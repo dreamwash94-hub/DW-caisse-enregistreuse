@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0C2340"/>
+      <stop offset="55%" style="stop-color:#1565C0"/>
+      <stop offset="100%" style="stop-color:#29B5E8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <!-- Wave shape -->
+  <path d="M0 320 Q128 260 256 320 Q384 380 512 320 L512 512 L0 512 Z" fill="rgba(255,255,255,0.08)"/>
+  <path d="M0 370 Q128 310 256 370 Q384 430 512 370 L512 512 L0 512 Z" fill="rgba(255,255,255,0.05)"/>
+  <!-- D letter -->
+  <text x="256" y="310" text-anchor="middle" font-family="Arial Black, Arial" font-weight="900" font-size="230" fill="#F73FA4">D</text>
+  <!-- W letter -->
+  <text x="256" y="310" text-anchor="middle" font-family="Arial Black, Arial" font-weight="900" font-size="230" fill="#29B5E8" dx="110">W</text>
+</svg>

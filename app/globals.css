@@ -5,28 +5,54 @@
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
-html, body {
+html {
   height: 100%;
+  height: -webkit-fill-available;
 }
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
   background: linear-gradient(145deg, #0C2340 0%, #1565C0 55%, #29B5E8 100%);
+  background-attachment: fixed;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   color: white;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* iOS safe area */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Prevent iOS input zoom (requires font-size >= 16px) */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Touch targets minimum 44px (Apple HIG) */
+button {
+  min-height: 44px;
 }
 
 .glass {
   background: rgba(255,255,255,0.1);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.15);
 }
 
 .glass-dark {
   background: rgba(0,0,0,0.15);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.1);
 }
 

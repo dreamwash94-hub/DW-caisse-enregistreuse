@@ -76,13 +76,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
 
       {/* Mobile nav */}
-      <nav className="sm:hidden flex glass border-t border-white/10">
+      <nav className="sm:hidden flex glass border-t border-white/10 safe-bottom">
         {nav.map(n => (
           <Link key={n.href} href={n.href}
-            className={`flex-1 py-2 text-center text-xs font-semibold transition-all ${
+            className={`flex-1 py-3 text-center text-xs font-semibold transition-all ${
               pathname === n.href ? 'text-dw-pink bg-white/15' : 'text-white/60'
             }`}>
-            <div className="text-base">{n.icon}</div>
+            <div className="text-lg">{n.icon}</div>
             {n.label}
           </Link>
         ))}

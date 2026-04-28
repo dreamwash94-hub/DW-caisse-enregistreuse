@@ -1,0 +1,13 @@
+{
+  "name": "DreamWash Caisse",
+  "short_name": "DW Caisse",
+  "description": "Caisse enregistreuse Dreamwash",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C2340",
+  "theme_color": "#0C2340",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
