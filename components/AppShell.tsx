@@ -37,7 +37,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
     { href: '/caisse',   label: 'Caisse',   icon: '🧾' },
     { href: '/clients',  label: 'Clients',  icon: '👤' },
     { href: '/factures', label: 'Factures', icon: '📄' },
-    { href: '/admin',    label: 'Admin',    icon: '📊' },
   ]
 
   return (

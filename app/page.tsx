@@ -4,25 +4,30 @@ import { useRouter } from 'next/navigation'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
-import { CENTRES } from '@/lib/data'
 import { Tech } from '@/types'
 import DreamwashLogo from '@/components/DreamwashLogo'
 
 const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫']
+const ADMIN_CODE = '9999'
 
 export default function LoginPage() {
   const { login, tech, isLoading } = useAuth()
   const router = useRouter()
-  const [centre, setCentre] = useState(CENTRES[0])
   const [pin, setPin] = useState('')
   const [techs, setTechs] = useState<Tech[]>([])
   const [error, setError] = useState('')
   const [checking, setChecking] = useState(false)
   const [shake, setShake] = useState(false)
+  const [tabletCentre, setTabletCentre] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isLoading && tech) router.replace('/caisse')
   }, [tech, isLoading, router])
+
+  useEffect(() => {
+    const saved = localStorage.getItem('dw_tablet_centre')
+    setTabletCentre(saved)
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -44,6 +49,10 @@ export default function LoginPage() {
     setPin(next)
     setError('')
     if (next.length === 4) {
+      if (next === ADMIN_CODE) {
+        router.push('/admin')
+        return
+      }
       setChecking(true)
       setTimeout(() => {
         const found = techs.find(t => t.code === next)
@@ -53,13 +62,14 @@ export default function LoginPage() {
           setPin('')
           setTimeout(() => setShake(false), 400)
         } else {
+          const centre = tabletCentre || 'Belleville'
           login(found, centre)
           router.replace('/caisse')
         }
         setChecking(false)
       }, 300)
     }
-  }, [pin, techs, centre, login, router])
+  }, [pin, techs, tabletCentre, login, router])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
@@ -69,24 +79,15 @@ export default function LoginPage() {
         <p className="text-white/60 text-sm mt-2">Caisse enregistreuse</p>
       </div>
 
-      {/* Centre selection */}
-      <div className="w-full max-w-sm mb-6 animate-fadeUp">
-        <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-2 text-center">
-          Sélectionnez votre centre
-        </p>
-        <div className="flex flex-wrap gap-2 justify-center">
-          {CENTRES.map(c => (
-            <button key={c} onClick={() => { setCentre(c); setPin(''); setError('') }}
-              className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-                centre === c
-                  ? 'bg-dw-pink text-white shadow-lg'
-                  : 'text-white border border-white/30 hover:bg-white/20'
-              }`}>
-              {c}
-            </button>
-          ))}
+      {/* Centre badge (read-only when configured) */}
+      {tabletCentre && (
+        <div className="mb-6 animate-fadeUp">
+          <div className="glass px-5 py-2 rounded-full flex items-center gap-2">
+            <span className="text-white/50 text-xs">📍</span>
+            <span className="text-white font-bold text-sm">{tabletCentre}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* PIN card */}
       <div className={`w-full max-w-xs glass rounded-2xl p-6 animate-fadeUp ${shake ? 'animate-shake' : ''}`}>
@@ -134,6 +135,12 @@ export default function LoginPage() {
           </div>
         )}
       </div>
+
+      {!tabletCentre && (
+        <p className="text-white/30 text-xs mt-6 animate-fadeUp">
+          Entrez le code admin (9999) pour configurer cette tablette
+        </p>
+      )}
     </div>
   )
 }

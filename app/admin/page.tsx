@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase'
 import { Vente } from '@/types'
 import { fmt, CENTRES } from '@/lib/data'
 import AppShell from '@/components/AppShell'
+import { useRouter } from 'next/navigation'
 
 const ADMIN_CODE = '9999'
 const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫']
@@ -15,12 +16,19 @@ const todayStr = () => {
 }
 
 export default function AdminPage() {
+  const router = useRouter()
   const [unlocked, setUnlocked] = useState(false)
   const [pin, setPin] = useState('')
   const [shake, setShake] = useState(false)
   const [ventes, setVentes] = useState<Vente[]>([])
   const [filterCentre, setFilterCentre] = useState('Tous')
   const [filterPeriod, setFilterPeriod] = useState<'today'|'week'|'month'>('today')
+  const [tabletCentre, setTabletCentre] = useState<string | null>(null)
+  const [savedMsg, setSavedMsg] = useState(false)
+
+  useEffect(() => {
+    setTabletCentre(localStorage.getItem('dw_tablet_centre'))
+  }, [])
 
   useEffect(() => {
     if (!unlocked) return
@@ -46,6 +54,13 @@ export default function AdminPage() {
     }
   }
 
+  const saveTabletCentre = (c: string) => {
+    localStorage.setItem('dw_tablet_centre', c)
+    setTabletCentre(c)
+    setSavedMsg(true)
+    setTimeout(() => setSavedMsg(false), 2000)
+  }
+
   const filterVente = (v: Vente) => {
     const d = new Date(v.dateISO)
     const now = new Date()
@@ -68,40 +83,67 @@ export default function AdminPage() {
 
   if (!unlocked) {
     return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center h-full py-8">
-          <p className="text-white/70 text-sm font-semibold mb-6">Code administrateur</p>
-          <div className={`glass rounded-2xl p-6 w-full max-w-xs ${shake ? 'animate-shake' : ''}`}>
-            <div className="flex justify-center gap-4 mb-6">
-              {[0,1,2,3].map(i => (
-                <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
-                  i < pin.length ? 'bg-white border-white' : 'border-white/40'
-                }`} />
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {KEYS.map((k, i) => {
-                if (!k) return <div key={i} />
-                return (
-                  <button key={i} onClick={() => handleKey(k)}
-                    className={`py-4 rounded-xl text-xl font-bold transition-all active:scale-95 ${
-                      k === '⌫' ? 'text-white/60' : 'text-white hover:bg-white/20'
-                    }`}
-                    style={{ background: k === '⌫' ? 'transparent' : 'rgba(255,255,255,0.1)' }}>
-                    {k}
-                  </button>
-                )
-              })}
-            </div>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+        <button onClick={() => router.replace('/')}
+          className="absolute top-4 left-4 text-white/50 hover:text-white text-sm transition-all">
+          ← Retour
+        </button>
+        <p className="text-white/70 text-sm font-semibold mb-6">Mode administrateur</p>
+        <div className={`glass rounded-2xl p-6 w-full max-w-xs ${shake ? 'animate-shake' : ''}`}>
+          <div className="flex justify-center gap-4 mb-6">
+            {[0,1,2,3].map(i => (
+              <div key={i} className={`w-4 h-4 rounded-full border-2 transition-all ${
+                i < pin.length ? 'bg-white border-white' : 'border-white/40'
+              }`} />
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {KEYS.map((k, i) => {
+              if (!k) return <div key={i} />
+              return (
+                <button key={i} onClick={() => handleKey(k)}
+                  className={`py-4 rounded-xl text-xl font-bold transition-all active:scale-95 ${
+                    k === '⌫' ? 'text-white/60' : 'text-white hover:bg-white/20'
+                  }`}
+                  style={{ background: k === '⌫' ? 'transparent' : 'rgba(255,255,255,0.1)' }}>
+                  {k}
+                </button>
+              )
+            })}
           </div>
         </div>
-      </AppShell>
+      </div>
     )
   }
 
   return (
     <AppShell>
       <div className="flex flex-col h-full p-4 overflow-y-auto" style={{ height: 'calc(100vh - 100px)' }}>
+
+        {/* Tablet config */}
+        <div className="glass rounded-2xl p-4 mb-4 flex-shrink-0">
+          <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
+            ⚙️ Configuration de cette tablette
+          </p>
+          <p className="text-white/50 text-xs mb-3">
+            Centre actuel : <span className="text-white font-bold">{tabletCentre || 'Non configuré'}</span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CENTRES.map(c => (
+              <button key={c} onClick={() => saveTabletCentre(c)}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
+                  tabletCentre === c
+                    ? 'bg-dw-pink text-white shadow-lg'
+                    : 'text-white/80 border border-white/30 hover:bg-white/20'
+                }`}>
+                {c}
+              </button>
+            ))}
+          </div>
+          {savedMsg && (
+            <p className="text-dw-pale text-xs font-semibold mt-2">✓ Centre sauvegardé !</p>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4 flex-shrink-0">
