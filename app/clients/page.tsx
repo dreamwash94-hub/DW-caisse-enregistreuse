@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase'
 import { Client } from '@/types'
 import AppShell from '@/components/AppShell'
 
-const EMPTY: Client = { nom: '', societe: '', email: '', telephone: '', adresse: '' }
+const EMPTY: Client = { nom: '', societe: '', email: '', telephone: '', adresse: '', immatriculation: '' }
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -47,11 +47,12 @@ export default function ClientsPage() {
   }
 
   const fields: { field: keyof Client; label: string; type: string }[] = [
-    { field: 'nom',       label: 'Nom *',     type: 'text' },
-    { field: 'societe',   label: 'Société',    type: 'text' },
-    { field: 'email',     label: 'Email',      type: 'email' },
-    { field: 'telephone', label: 'Téléphone',  type: 'tel' },
-    { field: 'adresse',   label: 'Adresse',    type: 'text' },
+    { field: 'nom',             label: 'Nom *',              type: 'text' },
+    { field: 'societe',         label: 'Société',            type: 'text' },
+    { field: 'email',           label: 'Email',              type: 'email' },
+    { field: 'telephone',       label: 'Téléphone',          type: 'tel' },
+    { field: 'adresse',         label: 'Adresse',            type: 'text' },
+    { field: 'immatriculation', label: '🚗 Immatriculation', type: 'text' },
   ]
 
   return (
@@ -96,6 +97,7 @@ export default function ClientsPage() {
                   {c.email && <p className="text-white/50 text-xs truncate">✉ {c.email}</p>}
                   {c.telephone && <p className="text-white/50 text-xs">☎ {c.telephone}</p>}
                   {c.adresse && <p className="text-white/50 text-xs truncate">📍 {c.adresse}</p>}
+                  {c.immatriculation && <p className="text-white/70 text-xs font-bold">🚗 {c.immatriculation.toUpperCase()}</p>}
                 </button>
               ))}
             </div>

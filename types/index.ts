@@ -28,6 +28,7 @@ export interface Client {
   email: string
   telephone: string
   adresse: string
+  immatriculation: string
   createdAt?: string
 }
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback } from 'react'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, getDocs, query, where, updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/context/AuthContext'
 import { SERVICES, CATEGORIES, COMPANY, fmt } from '@/lib/data'
@@ -75,7 +75,8 @@ const buildInvoiceHTML = (facture: Facture) => {
     <strong>${client.nom}</strong>${client.societe ? ` · ${client.societe}` : ''}<br>
     ${client.adresse ? `${client.adresse}<br>` : ''}
     ${client.email ? `${client.email}<br>` : ''}
-    ${client.telephone ? `${client.telephone}` : ''}
+    ${client.telephone ? `${client.telephone}<br>` : ''}
+    ${client.immatriculation ? `🚗 <strong>${client.immatriculation.toUpperCase()}</strong>` : ''}
   </div>` : ''}
 
   <div class="section">
@@ -131,12 +132,12 @@ export default function CaissePage() {
 
   // Client modal (panier)
   const [showClientModal, setShowClientModal] = useState(false)
-  const [clientForm, setClientForm] = useState<Client>({ nom:'', societe:'', email:'', telephone:'', adresse:'' })
+  const [clientForm, setClientForm] = useState<Client>({ nom:'', societe:'', email:'', telephone:'', adresse:'', immatriculation:'' })
   const [clientSearch, setClientSearch] = useState('')
 
   // Client modal (facture)
   const [showClientForFacture, setShowClientForFacture] = useState(false)
-  const [factureClientForm, setFactureClientForm] = useState<Client>({ nom:'', societe:'', email:'', telephone:'', adresse:'' })
+  const [factureClientForm, setFactureClientForm] = useState<Client>({ nom:'', societe:'', email:'', telephone:'', adresse:'', immatriculation:'' })
 
   const total = cart.reduce((s, i) => s + i.prix, 0)
   const totalHT = total / 1.2
@@ -201,10 +202,9 @@ export default function CaissePage() {
 
   // ── Invoice ──
   const openClientForFacture = useCallback(() => {
-    // Pre-fill with cart client if exists
     setFactureClientForm(client
       ? { ...client }
-      : { nom:'', societe:'', email:'', telephone:'', adresse:'' }
+      : { nom:'', societe:'', email:'', telephone:'', adresse:'', immatriculation:'' }
     )
     setShowSuccess(false)
     setShowClientForFacture(true)
@@ -226,6 +226,21 @@ export default function CaissePage() {
       sentTo: null,
     }
     try {
+      // Sauvegarde auto du client dans la base
+      if (clientData?.nom) {
+        const now = new Date().toISOString()
+        if (clientData.email) {
+          const q = query(collection(db, 'clients'), where('email', '==', clientData.email))
+          const snap = await getDocs(q)
+          if (!snap.empty) {
+            await updateDoc(doc(db, 'clients', snap.docs[0].id), { ...clientData, updatedAt: now })
+          } else {
+            await addDoc(collection(db, 'clients'), { ...clientData, createdAt: now })
+          }
+        } else {
+          await addDoc(collection(db, 'clients'), { ...clientData, createdAt: now })
+        }
+      }
       const ref = await addDoc(collection(db, 'factures'), facture)
       const saved = { ...facture, id: ref.id }
       setLastFacture(saved)
@@ -501,6 +516,7 @@ export default function CaissePage() {
                     <p className="font-bold">{lastFacture.client.nom}{lastFacture.client.societe ? ` · ${lastFacture.client.societe}` : ''}</p>
                     {lastFacture.client.adresse && <p className="text-gray-500 text-xs">{lastFacture.client.adresse}</p>}
                     {lastFacture.client.email && <p className="text-gray-500 text-xs">{lastFacture.client.email}</p>}
+                    {lastFacture.client.immatriculation && <p className="text-gray-700 text-xs font-bold mt-1">🚗 {lastFacture.client.immatriculation.toUpperCase()}</p>}
                   </div>
                 )}
 
@@ -583,11 +599,12 @@ export default function CaissePage() {
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {[
-                { field: 'nom',       label: 'Nom',       type: 'text',  placeholder: 'Jean Dupont' },
-                { field: 'societe',   label: 'Société',   type: 'text',  placeholder: 'Ma Société SAS' },
-                { field: 'email',     label: 'Email',     type: 'email', placeholder: 'jean@email.fr' },
-                { field: 'telephone', label: 'Téléphone', type: 'tel',   placeholder: '06 12 34 56 78' },
-                { field: 'adresse',   label: 'Adresse',   type: 'text',  placeholder: '12 rue de la Paix, Paris' },
+                { field: 'nom',             label: 'Nom',                  type: 'text',  placeholder: 'Jean Dupont' },
+                { field: 'societe',         label: 'Société',              type: 'text',  placeholder: 'Ma Société SAS' },
+                { field: 'email',           label: 'Email',                type: 'email', placeholder: 'jean@email.fr' },
+                { field: 'telephone',       label: 'Téléphone',            type: 'tel',   placeholder: '06 12 34 56 78' },
+                { field: 'adresse',         label: 'Adresse',              type: 'text',  placeholder: '12 rue de la Paix, Paris' },
+                { field: 'immatriculation', label: '🚗 Immatriculation',   type: 'text',  placeholder: 'AB-123-CD' },
               ].map(({ field, label, type, placeholder }) => (
                 <div key={field}>
                   <label className="text-white/60 text-xs font-semibold uppercase tracking-wider">{label}</label>
@@ -637,11 +654,12 @@ export default function CaissePage() {
 
             <div className="space-y-3">
               {[
-                { field: 'nom', label: 'Nom *', type: 'text' },
-                { field: 'societe', label: 'Société', type: 'text' },
-                { field: 'email', label: 'Email', type: 'email' },
-                { field: 'telephone', label: 'Téléphone', type: 'tel' },
-                { field: 'adresse', label: 'Adresse', type: 'text' },
+                { field: 'nom',             label: 'Nom *',               type: 'text' },
+                { field: 'societe',         label: 'Société',             type: 'text' },
+                { field: 'email',           label: 'Email',               type: 'email' },
+                { field: 'telephone',       label: 'Téléphone',           type: 'tel' },
+                { field: 'adresse',         label: 'Adresse',             type: 'text' },
+                { field: 'immatriculation', label: '🚗 Immatriculation',  type: 'text' },
               ].map(({ field, label, type }) => (
                 <div key={field}>
                   <label className="text-white/60 text-xs font-semibold uppercase tracking-wider">{label}</label>
