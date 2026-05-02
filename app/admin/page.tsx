@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Vente } from '@/types'
 import { fmt, CENTRES } from '@/lib/data'
@@ -254,9 +254,21 @@ export default function AdminPage() {
                     <p className="text-white/40 text-xs truncate">{v.items.map(it=>it.nom).join(', ')}</p>
                     {v.client && <p className="text-white/40 text-xs">👤 {v.client.nom}</p>}
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-dw-pale font-black">{fmt(v.totalTTC)}</p>
-                    <p className="text-white/40 text-xs">{v.date}</p>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-dw-pale font-black">{fmt(v.totalTTC)}</p>
+                      <p className="text-white/40 text-xs">{v.date}</p>
+                    </div>
+                    {v.id && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Supprimer cette vente de ${fmt(v.totalTTC)} ?`))
+                            deleteDoc(doc(db, 'ventes', v.id!))
+                        }}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg p-1.5 transition-all text-lg leading-none">
+                        🗑
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
