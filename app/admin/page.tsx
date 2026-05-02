@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { Vente } from '@/types'
+import { Vente, Facture } from '@/types'
+import { COMPANY } from '@/lib/data'
 import { fmt, CENTRES } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import DreamwashLogo from '@/components/DreamwashLogo'
@@ -25,6 +26,8 @@ export default function AdminPage() {
   const [filterPeriod, setFilterPeriod] = useState<'today'|'week'|'month'>('today')
   const [tabletCentre, setTabletCentre] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [factures, setFactures] = useState<Facture[]>([])
+  const [activeTab, setActiveTab] = useState<'ventes'|'factures'>('ventes')
 
   useEffect(() => {
     setTabletCentre(localStorage.getItem('dw_tablet_centre'))
@@ -32,11 +35,15 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!unlocked) return
-    const q = query(collection(db, 'ventes'), orderBy('timestamp', 'desc'))
-    const unsub = onSnapshot(q, snap => {
+    const qv = query(collection(db, 'ventes'), orderBy('timestamp', 'desc'))
+    const unsubV = onSnapshot(qv, snap => {
       setVentes(snap.docs.map(d => ({ ...d.data() as Vente, id: d.id })))
     })
-    return unsub
+    const qf = query(collection(db, 'factures'), orderBy('dateISO', 'desc'))
+    const unsubF = onSnapshot(qf, snap => {
+      setFactures(snap.docs.map(d => ({ ...d.data() as Facture, id: d.id })))
+    })
+    return () => { unsubV(); unsubF() }
   }, [unlocked])
 
   const handleKey = (k: string) => {
@@ -160,6 +167,18 @@ export default function AdminPage() {
           )}
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 flex-shrink-0">
+          {(['ventes','factures'] as const).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)}
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all capitalize ${
+                activeTab === t ? 'bg-white text-dw-dark' : 'text-white/70 border border-white/20 hover:bg-white/10'
+              }`}>
+              {t === 'ventes' ? '🧾 Ventes' : '📄 Factures'}
+            </button>
+          ))}
+        </div>
+
         {/* Filters */}
         <div className="flex flex-wrap gap-2 flex-shrink-0">
           {(['today','week','month'] as const).map(p => (
@@ -177,6 +196,48 @@ export default function AdminPage() {
           </select>
         </div>
 
+        {activeTab === 'factures' ? (
+          /* ── FACTURES ── */
+          <div className="flex flex-col gap-3">
+            {factures.filter(f =>
+              (filterCentre === 'Tous' || f.vente?.centre === filterCentre)
+            ).slice(0, 50).map((f, i) => (
+              <div key={f.id ?? i} className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="font-bold text-white text-sm">{f.numero}</p>
+                    {f.sent && <span className="text-xs text-white/40">✉ Envoyé</span>}
+                  </div>
+                  <p className="text-white/50 text-xs">{f.date} · {f.vente?.centre}</p>
+                  {f.client && <p className="text-white/40 text-xs">👤 {f.client.nom}{f.client.immatriculation ? ` · 🚗 ${f.client.immatriculation.toUpperCase()}` : ''}</p>}
+                  <p className="text-white/40 text-xs truncate">{f.vente?.items?.map(it=>it.nom).join(', ')}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="text-right">
+                    <p className="text-dw-pale font-black">{fmt(f.vente?.totalTTC ?? 0)}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      f.vente?.paiement === 'carte' ? 'bg-blue-500/30 text-blue-200' : 'bg-dw-blue/30 text-dw-blue'
+                    }`}>{f.vente?.paiement === 'carte' ? '💳' : '💵'}</span>
+                  </div>
+                  {f.id && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Supprimer la facture ${f.numero} ?`))
+                          deleteDoc(doc(db, 'factures', f.id!))
+                      }}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg p-1.5 transition-all text-lg leading-none">
+                      🗑
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {factures.length === 0 && (
+              <div className="text-center text-white/30 py-8">Aucune facture</div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Stats cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div className="glass rounded-xl p-4">
@@ -276,6 +337,8 @@ export default function AdminPage() {
           )}
         </div>
       </div>
+        </>
+        )}
     </div>
   )
 }
