@@ -23,7 +23,8 @@ export default function AdminPage() {
   const [shake, setShake] = useState(false)
   const [ventes, setVentes] = useState<Vente[]>([])
   const [filterCentre, setFilterCentre] = useState('Tous')
-  const [filterPeriod, setFilterPeriod] = useState<'today'|'week'|'month'>('today')
+  const [filterMonth, setFilterMonth] = useState<string>('all')
+  const [filterPaiement, setFilterPaiement] = useState<'tous'|'especes'|'carte'>('tous')
   const [tabletCentre, setTabletCentre] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [factures, setFactures] = useState<Facture[]>([])
@@ -68,16 +69,31 @@ export default function AdminPage() {
     setTimeout(() => setSavedMsg(false), 2000)
   }
 
+  const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+
+  const getMonthKey = (iso: string) => {
+    const d = new Date(iso)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+  }
+
+  const monthLabel = (key: string) => {
+    const [y, m] = key.split('-')
+    return MOIS_FR[parseInt(m)-1] + ' ' + y
+  }
+
+  const availableMonths = [...new Set(ventes.map(v => getMonthKey(v.dateISO)))].sort().reverse()
+
   const filterVente = (v: Vente) => {
-    const d = new Date(v.dateISO)
-    const now = new Date()
-    const periodOk = filterPeriod === 'today'
-      ? v.date === todayStr()
-      : filterPeriod === 'week'
-        ? d >= new Date(now.getTime() - 7*86400000)
-        : d >= new Date(now.getTime() - 30*86400000)
+    const monthOk = filterMonth === 'all' || getMonthKey(v.dateISO) === filterMonth
     const centreOk = filterCentre === 'Tous' || v.centre === filterCentre
-    return periodOk && centreOk
+    const paiementOk = filterPaiement === 'tous' || v.paiement === filterPaiement
+    return monthOk && centreOk && paiementOk
+  }
+
+  const filterFacture = (f: Facture) => {
+    const monthOk = filterMonth === 'all' || getMonthKey(f.dateISO) === filterMonth
+    const centreOk = filterCentre === 'Tous' || f.vente?.centre === filterCentre
+    return monthOk && centreOk
   }
 
   const visible = ventes.filter(filterVente)
@@ -180,28 +196,44 @@ export default function AdminPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 flex-shrink-0">
-          {(['today','week','month'] as const).map(p => (
-            <button key={p} onClick={() => setFilterPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                filterPeriod === p ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
-              }`}>
-              {p === 'today' ? "Aujourd'hui" : p === 'week' ? '7 jours' : '30 jours'}
-            </button>
-          ))}
-          <select value={filterCentre} onChange={e => setFilterCentre(e.target.value)}
-            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white/20 text-white border border-white/20 outline-none">
-            <option value="Tous">Tous les centres</option>
-            {CENTRES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          {/* Mois */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button onClick={() => setFilterMonth('all')}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-semibold flex-shrink-0 transition-all ${
+                filterMonth === 'all' ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+              }`}>Tout</button>
+            {availableMonths.map(m => (
+              <button key={m} onClick={() => setFilterMonth(m)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-semibold flex-shrink-0 transition-all ${
+                  filterMonth === m ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+                }`}>{monthLabel(m)}</button>
+            ))}
+          </div>
+          {/* Centre + Paiement */}
+          <div className="flex gap-2 flex-wrap">
+            <select value={filterCentre} onChange={e => setFilterCentre(e.target.value)}
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white/20 text-white border border-white/20 outline-none">
+              <option value="Tous">Tous les centres</option>
+              {CENTRES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            {activeTab === 'ventes' && (
+              <div className="flex gap-1">
+                {([['tous','Tous'],['especes','💵 Espèces'],['carte','💳 Carte']] as const).map(([val, label]) => (
+                  <button key={val} onClick={() => setFilterPaiement(val)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                      filterPaiement === val ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+                    }`}>{label}</button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {activeTab === 'factures' ? (
           /* ── FACTURES ── */
           <div className="flex flex-col gap-3">
-            {factures.filter(f =>
-              (filterCentre === 'Tous' || f.vente?.centre === filterCentre)
-            ).slice(0, 50).map((f, i) => (
+            {factures.filter(filterFacture).slice(0, 50).map((f, i) => (
               <div key={f.id ?? i} className="glass rounded-xl px-4 py-3 flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
