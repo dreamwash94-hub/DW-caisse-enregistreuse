@@ -257,11 +257,18 @@ export default function AdminPage() {
           </div>
           {/* Centre + Paiement */}
           <div className="flex gap-2 flex-wrap">
-            <select value={filterCentre} onChange={e => setFilterCentre(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white/20 text-white border border-white/20 outline-none">
-              <option value="Tous">Tous les centres</option>
-              {CENTRES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+            <div className="flex gap-1 flex-wrap">
+              <button onClick={() => setFilterCentre('Tous')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                  filterCentre === 'Tous' ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+                }`}>Tous</button>
+              {CENTRES.map(c => (
+                <button key={c} onClick={() => setFilterCentre(c)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    filterCentre === c ? 'bg-white text-dw-dark' : 'text-white/80 hover:bg-white/20 border border-white/20'
+                  }`}>{c}</button>
+              ))}
+            </div>
             {activeTab === 'ventes' && (
               <div className="flex gap-1">
                 {([['tous','Tous'],['especes','💵 Espèces'],['carte','💳 Carte']] as const).map(([val, label]) => (
