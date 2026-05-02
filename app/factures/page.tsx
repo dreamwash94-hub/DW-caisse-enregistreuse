@@ -53,6 +53,11 @@ export default function FacturesPage() {
   const [emailAddr, setEmailAddr] = useState('')
   const [sending, setSending] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [tabletCentre, setTabletCentre] = useState<string | null>(null)
+
+  useEffect(() => {
+    setTabletCentre(localStorage.getItem('dw_tablet_centre'))
+  }, [])
 
   useEffect(() => {
     const q = query(collection(db, 'factures'), orderBy('dateISO', 'desc'))
@@ -65,6 +70,8 @@ export default function FacturesPage() {
   const filterDate = (f: Facture) => {
     const d = new Date(f.dateISO)
     const now = new Date()
+    const centreOk = !tabletCentre || f.vente?.centre === tabletCentre
+    if (!centreOk) return false
     if (filter === 'today') return d.toDateString() === now.toDateString()
     if (filter === 'week') { const w = new Date(); w.setDate(w.getDate()-7); return d >= w }
     if (filter === 'month') { const m = new Date(); m.setMonth(m.getMonth()-1); return d >= m }
@@ -105,6 +112,14 @@ export default function FacturesPage() {
   return (
     <AppShell>
       <div className="flex flex-col h-full p-4" style={{ height: 'calc(100vh - 100px)' }}>
+        {/* Centre badge */}
+        {tabletCentre && (
+          <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+            <span className="text-white/50 text-xs">📍</span>
+            <span className="text-white/80 text-xs font-semibold">{tabletCentre}</span>
+          </div>
+        )}
+
         {/* Filter tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto flex-shrink-0">
           {filters.map(({ key, label }) => (
