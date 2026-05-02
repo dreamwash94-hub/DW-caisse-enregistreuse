@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Vente, Facture } from '@/types'
-import { COMPANY } from '@/lib/data'
-import { fmt, CENTRES } from '@/lib/data'
+import { fmt, CENTRES, COMPANY } from '@/lib/data'
 import { useRouter } from 'next/navigation'
 import DreamwashLogo from '@/components/DreamwashLogo'
 
@@ -14,6 +13,52 @@ const KEYS = ['1','2','3','4','5','6','7','8','9','','0','⌫']
 const todayStr = () => {
   const d = new Date()
   return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+}
+
+const buildInvoiceHTML = (facture: Facture) => {
+  const { vente, client } = facture
+  const rows = vente.items.map(it =>
+    `<tr>
+      <td style="padding:8px 4px;border-bottom:1px solid #e5e7eb">${it.nom}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px">${it.description||''}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #e5e7eb;text-align:right">${fmt(it.prix)}</td>
+    </tr>`
+  ).join('')
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Facture ${facture.numero}</title>
+  <style>body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:700px;margin:0 auto}
+  .logo{color:#1565C0;font-size:22px;font-weight:900}.header{display:flex;justify-content:space-between;margin-bottom:32px}
+  table{width:100%;border-collapse:collapse}th{padding:8px 4px;border-bottom:2px solid #1565C0;text-align:left;font-size:12px;color:#6b7280}
+  .total-row td{border-top:2px solid #1565C0;font-weight:900;font-size:17px;color:#1565C0;padding-top:8px}
+  .footer{margin-top:40px;text-align:center;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:16px}
+  </style></head><body>
+  <div class="header">
+    <div><div class="logo">Dreamwash</div>
+    <div style="font-size:13px;color:#6b7280">${COMPANY.adresse}</div>
+    <div style="font-size:13px;color:#6b7280">${COMPANY.telephone} · ${COMPANY.email}</div>
+    <div style="font-size:12px;color:#9ca3af">SIRET: ${COMPANY.siret}</div></div>
+    <div style="text-align:right;font-size:13px;color:#6b7280">
+      <strong style="display:block;font-size:15px;color:#111">FACTURE</strong>
+      ${facture.numero}<br>${facture.date}<br>Centre: ${vente.centre}</div>
+  </div>
+  ${client ? `<div style="margin-bottom:24px"><strong>${client.nom}${client.societe?` · ${client.societe}`:''}</strong><br>
+  ${client.adresse||''}<br>${client.email||''}<br>${client.telephone||''}
+  ${client.immatriculation?`<br>🚗 <strong>${client.immatriculation.toUpperCase()}</strong>`:''}</div>` : ''}
+  <table><thead><tr><th>Prestation</th><th>Description</th><th style="text-align:right">Prix TTC</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div style="text-align:right;margin-top:16px">
+    <div style="color:#6b7280;font-size:13px">Total HT : ${fmt(vente.totalHT)}</div>
+    <div style="color:#6b7280;font-size:13px">TVA 20% : ${fmt(vente.tva)}</div>
+    <table><tr class="total-row"><td style="padding-right:24px">Total TTC</td><td>${fmt(vente.totalTTC)}</td></tr></table>
+  </div>
+  <div class="footer">Merci de votre confiance · ${COMPANY.adresse} · ${COMPANY.telephone}</div>
+  </body></html>`
+}
+
+const printFacture = (facture: Facture) => {
+  const win = window.open('', '_blank')!
+  win.document.write(buildInvoiceHTML(facture))
+  win.document.close()
+  setTimeout(() => win.print(), 400)
 }
 
 export default function AdminPage() {
@@ -251,6 +296,11 @@ export default function AdminPage() {
                       f.vente?.paiement === 'carte' ? 'bg-blue-500/30 text-blue-200' : 'bg-dw-blue/30 text-dw-blue'
                     }`}>{f.vente?.paiement === 'carte' ? '💳' : '💵'}</span>
                   </div>
+                  <button
+                    onClick={() => printFacture(f)}
+                    className="text-white/60 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-all text-lg leading-none">
+                    🖨️
+                  </button>
                   {f.id && (
                     <button
                       onClick={() => {
